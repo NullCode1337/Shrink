@@ -1,0 +1,3 @@
+# Android Studio writes sdk.dir into local.properties itself; just append these two.
+YOURLS_SIGNATURE=paste_your_signature_here
+YOURLS_ENDPOINT=https://10101110.xyz/yourls-api.php
