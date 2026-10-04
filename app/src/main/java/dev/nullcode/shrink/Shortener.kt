@@ -3,6 +3,7 @@ package dev.nullcode.shrink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -15,7 +16,18 @@ data class LinkItem(
     val timestamp: String,
 )
 
+/** Network-level failure (no route, DNS, timeout). Lets the UI tell "offline" from "server said no". */
+class OfflineException(cause: Throwable) : Exception("You're offline.", cause)
+
 object Shortener {
+    private inline fun <T> catching(block: () -> T): Result<T> = try {
+        Result.success(block())
+    } catch (e: IOException) {
+        Result.failure(OfflineException(e))
+    } catch (e: Throwable) {
+        Result.failure(e)
+    }
+
     private val URL_RE = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)
     private val BARE_RE = Regex("""^[\w-]+(\.[\w-]+)+(/\S*)?$""")
 
@@ -31,7 +43,7 @@ object Shortener {
     /** Returns the short URL. YOURLS answers with the existing short URL if the link was already shortened. */
     suspend fun shorten(endpoint: String, signature: String, url: String, keyword: String? = null): Result<String> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            catching {
                 if (signature.isBlank()) {
                     error("No API signature set. Add it in Settings.")
                 }
@@ -69,7 +81,7 @@ object Shortener {
     /** Most recently created links, newest first. */
     suspend fun listLinks(endpoint: String, signature: String, limit: Int = 50): Result<List<LinkItem>> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            catching {
                 if (signature.isBlank()) {
                     error("No API signature set. Add it in Settings.")
                 }
@@ -88,7 +100,7 @@ object Shortener {
                     val json = runCatching { JSONObject(body) }.getOrNull()
                         ?: error("Server returned HTTP $code")
                     val links = json.optJSONObject("links")
-                        ?: return@runCatching emptyList()
+                        ?: return@catching emptyList()
                     links.keys().asSequence().mapNotNull { key ->
                         val o = links.optJSONObject(key) ?: return@mapNotNull null
                         LinkItem(
@@ -109,7 +121,7 @@ object Shortener {
      *  Requires the "API Edit URL" YOURLS plugin — core YOURLS has no update action. */
     suspend fun updateUrl(endpoint: String, signature: String, keyword: String, url: String, title: String? = null): Result<Unit> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            catching {
                 if (signature.isBlank()) {
                     error("No API signature set. Add it in Settings.")
                 }
@@ -146,7 +158,7 @@ object Shortener {
      *  Requires the "API Delete" YOURLS plugin — core YOURLS has no delete action. */
     suspend fun deleteUrl(endpoint: String, signature: String, keyword: String): Result<Unit> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            catching {
                 if (signature.isBlank()) {
                     error("No API signature set. Add it in Settings.")
                 }

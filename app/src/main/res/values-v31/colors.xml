@@ -1,0 +1,4 @@
+<resources>
+    <!-- Android 12+: window background follows the system palette so there is no flash before Compose draws -->
+    <color name="window_bg">@android:color/system_neutral1_10</color>
+</resources>

@@ -25,6 +25,7 @@ class ShareActivity : ComponentActivity() {
             Shortener.shorten(endpoint, signature, url)
                 .onSuccess { short ->
                     copyToClipboard(short)
+                    LinkCache.add(applicationContext, endpoint, short, url)
                     toast("Copied: $short")
                 }
                 .onFailure { toast(it.message ?: "Couldn't shorten the link") }
